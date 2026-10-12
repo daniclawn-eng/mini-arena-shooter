@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenArena Mini-Clon</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            background: #222; 
+            color: #fff; 
+            margin: 10px; 
+        }
+        canvas { 
+            background: #111; 
+            border: 2px solid #d32f2f; 
+            display: block; 
+            margin: 10px auto; 
+            cursor: crosshair;
+        }
+        h1 { 
+            color: #d32f2f; 
+            margin: 5px; 
+        }
+        kbd {
+            background: #444;
+            border: 1px solid #666;
+            border-radius: 3px;
+            padding: 2px 6px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mini Arena Shooter</h1>
+    <p>Mueve con <kbd>A</kbd> / <kbd>D</kbd> y dispara con el <kbd>Clic</kbd> del ratón.</p>
+    <canvas id="gameCanvas" width="500" height="300"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let player = { x: 250, y: 260, w: 20, h: 20, speed: 5 };
+        let bullets = [];
+        let enemies = [];
+        let keys = {};
+
+        window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+        
+        canvas.addEventListener("click", e => {
+            const rect = canvas.getBoundingClientRect();
+            // Calcular el centro del jugador para un disparo más preciso
+            let playerCenterX = player.x + (player.w / 2);
+            let playerCenterY = player.y + (player.h / 2);
+            let angle = Math.atan2(e.clientY - rect.top - playerCenterY, e.clientX - rect.left - playerCenterX);
+            
+            bullets.push({ 
+                x: playerCenterX, 
+                y: playerCenterY, 
+                vx: Math.cos(angle) * 7, 
+                vy: Math.sin(angle) * 7 
+            });
+        });
+
+        function update() {
+            // Movimiento del jugador
+            if (keys['a'] && player.x > 0) player.x -= player.speed;
+            if (keys['d'] && player.x < canvas.width - player.w) player.x += player.speed;
+
+            // Actualizar balas (filtrando las que se salen de la pantalla)
+            bullets = bullets.filter(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+                return b.y >= 0 && b.x >= 0 && b.x <= canvas.width && b.y <= canvas.height;
+            });
+
+            // Actualizar enemigos (filtrando los que escapan por abajo)
+            enemies = enemies.filter(en => {
+                en.y += 1.5;
+                return en.y <= canvas.height;
+            });
+
+            // Sistema de colisiones optimizado
+            for (let bi = bullets.length - 1; bi >= 0; bi--) {
+                for (let ei = enemies.length - 1; ei >= 0; ei--) {
+                    let b = bullets[bi];
+                    let en = enemies[ei];
+
+                    if (b.x > en.x && b.x < en.x + 20 && b.y > en.y && b.y < en.y + 20) {
+                        enemies.splice(ei, 1);
+                        bullets.splice(bi, 1);
+                        break; // Sale del ciclo de enemigos ya que la bala se destruyó
+                    }
+                }
+            }
+
+            // Generar enemigos aleatoriamente
+            if (Math.random() < 0.02) {
+                enemies.push({ x: Math.random() * (canvas.width - 20), y: 0 });
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar jugador (Azul)
+            ctx.fillStyle = "#1976d2"; 
+            ctx.fillRect(player.x, player.y, player.w, player.h);
+            
+            // Dibujar balas (Amarillo)
+            ctx.fillStyle = "#ffeb3b"; 
+            bullets.forEach(b => ctx.fillRect(b.x, b.y, 5, 5));
+            
+            // Dibujar enemigos (Rojo)
+            ctx.fillStyle = "#d32f2f"; 
+            enemies.forEach(en => ctx.fillRect(en.x, en.y, 20, 20));
+        }
+
+        function loop() { 
+            update(); 
+            draw(); 
+            requestAnimationFrame(loop); 
+        }
+        
+        loop();
+    </script>
+</body>
+</html>
